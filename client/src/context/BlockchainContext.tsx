@@ -7,6 +7,7 @@ import {
   INITIAL_AUDIT_LOGS
 } from '../data/mockData';
 import { calculateSHA256, calculateBlockHash } from '../utils/crypto';
+import { ClientMerkleTree } from '../utils/merkle';
 
 interface User {
   email: string;
@@ -154,12 +155,28 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       latestBlock.hash
     );
 
+    const merkleTree = new ClientMerkleTree([newTx.certificateHash]);
+    const computedMerkleRoot = await merkleTree.buildTree();
+
     const newBlock: Block = {
       index: newBlockIndex,
       timestamp,
       transactions: [newTx],
       previousHash: latestBlock.hash,
       hash: newBlockHash,
+      merkleRoot: computedMerkleRoot,
+      consensusApprovals: [
+        {
+          validatorId: 'node-val-01',
+          name: 'Dean of Academic Affairs (VIT Pune)',
+          signature: `poa_sig_0x8f2a_${newBlockHash.slice(0, 16)}`
+        },
+        {
+          validatorId: 'node-val-02',
+          name: 'Controller of Examinations (VIT Pune)',
+          signature: `poa_sig_0x3b9c_${newBlockHash.slice(0, 16)}`
+        }
+      ],
       validator: 'VIT Registrar Node (Node-VIT-01)',
       nonce: Math.floor(Math.random() * 9000) + 1000
     };
@@ -230,12 +247,28 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       latestBlock.hash
     );
 
+    const merkleTree = new ClientMerkleTree([revokeTx.certificateHash]);
+    const computedMerkleRoot = await merkleTree.buildTree();
+
     const newBlock: Block = {
       index: newBlockIndex,
       timestamp,
       transactions: [revokeTx],
       previousHash: latestBlock.hash,
       hash: newBlockHash,
+      merkleRoot: computedMerkleRoot,
+      consensusApprovals: [
+        {
+          validatorId: 'node-val-01',
+          name: 'Dean of Academic Affairs (VIT Pune)',
+          signature: `poa_sig_0x8f2a_${newBlockHash.slice(0, 16)}`
+        },
+        {
+          validatorId: 'node-val-02',
+          name: 'Controller of Examinations (VIT Pune)',
+          signature: `poa_sig_0x3b9c_${newBlockHash.slice(0, 16)}`
+        }
+      ],
       validator: 'VIT Registrar Node (Node-VIT-01)',
       nonce: Math.floor(Math.random() * 9000) + 1000
     };
@@ -348,9 +381,10 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return result;
     }
 
-    // Genuine Match
+    // Genuine Match or On-Chain Revoked Credential
+    const isRevoked = matchedCert.status === 'Revoked';
     const result: VerificationResultData = {
-      status: 'VERIFIED',
+      status: isRevoked ? 'REVOKED' : 'VERIFIED',
       certificateId: matchedCert.certificateId,
       studentName: matchedCert.studentName,
       institution: matchedCert.institution,
@@ -364,7 +398,9 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       cryptographicIntegrity: 'MATCH',
       blockchainRecord: 'FOUND',
       issuingInstitution: 'VERIFIED',
-      isRevoked: matchedCert.status === 'Revoked'
+      isRevoked,
+      digitalSignature: `0xecdsa_${matchedCert.certificateHash.slice(0, 32)}_sig`,
+      issuerPublicKey: '0x8F2A91D6E7216A8C9c1E86E20738e4A81De95B24'
     };
 
     setAuditLogs(prev => [

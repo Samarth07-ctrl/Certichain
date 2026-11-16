@@ -528,6 +528,101 @@ export const PublicVerifyPage: React.FC = () => {
               </div>
             )}
 
+            {/* 1.5 ON-CHAIN REVOCATION RESULT */}
+            {result.status === 'REVOKED' && (
+              <div className="bg-white border-2 border-amber-300 rounded-2xl shadow-xs overflow-hidden">
+                <div className="bg-amber-50/80 border-b border-amber-200 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                      <ShieldAlert className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-amber-950">Certificate Revoked on Blockchain</h2>
+                        <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-600 text-white uppercase tracking-wider">
+                          Revoked
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-800 mt-0.5">
+                        This credential was sealed onto the blockchain, but has subsequently been officially <strong>REVOKED</strong> by the institution.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-left sm:text-right text-xs font-mono">
+                    <span className="text-amber-800 block">Ledger State</span>
+                    <span className="font-bold text-amber-950">IMMUTABLE REVOCATION TRANSACTION</span>
+                  </div>
+                </div>
+
+                <div className="p-6 sm:p-8 space-y-6 text-xs">
+                  <div className="p-4 bg-amber-100/60 border border-amber-300 rounded-xl text-amber-950 space-y-1">
+                    <span className="font-bold block text-sm flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-700" />
+                      Notice to Employers & Background Screeners:
+                    </span>
+                    <p className="text-[11px] leading-relaxed">
+                      The university registrar has issued an append-only revocation transaction. While the original historical issuance record remains immutable on the chain, this credential is <strong>no longer active or valid</strong>.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="p-3.5 rounded-lg border border-slate-200 bg-[#F8FAFC]">
+                      <span className="text-slate-500 block mb-1">Student / Candidate</span>
+                      <span className="text-sm font-semibold text-slate-900">{result.studentName}</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-lg border border-slate-200 bg-[#F8FAFC]">
+                      <span className="text-slate-500 block mb-1">Certificate Identifier</span>
+                      <span className="text-sm font-mono font-semibold text-slate-900">{result.certificateId}</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-lg border border-slate-200 bg-[#F8FAFC]">
+                      <span className="text-slate-500 block mb-1">Issuing Institution</span>
+                      <span className="text-sm font-medium text-slate-900">{result.institution}</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-lg border border-slate-200 bg-[#F8FAFC]">
+                      <span className="text-slate-500 block mb-1">Academic Program</span>
+                      <span className="text-sm font-medium text-slate-900">{result.program}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200">
+                    <div className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider">
+                      On-Chain Credential Lifecycle History
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-emerald-700 block">Stage 1: Issuance</span>
+                        <div className="font-bold text-slate-900">Certificate Minted</div>
+                        <div className="text-[11px] text-slate-600 font-mono">Date: {result.issueDate} · Block #{result.blockNumber}</div>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl border border-rose-300 bg-rose-50/60 space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-rose-700 block">Stage 2: Revocation</span>
+                        <div className="font-bold text-rose-950">Revocation Transaction Sealed</div>
+                        <div className="text-[11px] text-rose-800 font-mono">Status: REVOKED ON LEDGER</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-between items-center">
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      Historical Block: #{result.blockNumber} · Tx ID: {result.transactionId}
+                    </span>
+                    <button
+                      onClick={() => setShowMerkleModal(true)}
+                      className="px-3.5 py-1.5 bg-[#123B5D] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-blue-300" />
+                      <span>Verify Historical Merkle Path</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* 2. TAMPERED / MISMATCH RESULT */}
             {result.status === 'MISMATCH' && (
               <div className="bg-white border border-rose-300 rounded-2xl shadow-xs overflow-hidden">
