@@ -1,64 +1,96 @@
 # CertiChain — Blockchain-Based Academic Certificate Verification
 
-An enterprise fintech/banking-grade web prototype for tamper-evident academic certificate issuance and verification.
+A permissioned, privacy-preserving credential registry web application for tamper-evident academic certificate issuance and instant verification.
 
 > **Core Value Proposition:** *"Trust academic credentials without trusting the document."*
 
 ---
 
-## 🏛️ System Overview
+## 🏛️ System Architecture
 
-CertiChain implements a **zero-trust, privacy-preserving credential registry architecture**:
-1. **Never Stores Raw PDFs on Chain:** The certificate binary remains strictly private. Only the deterministic **SHA-256 cryptographic digest** and institutional metadata are registered.
-2. **Deterministic Cryptographic Hashing:** Uses 256-bit SHA-256 (FIPS 180-4 standard). Even a 1-pixel or 1-character change causes a complete hash mismatch due to the avalanche effect.
-3. **Sequential Educational Blockchain:** Every certificate registration or revocation is sealed in a cryptographically linked block with `previousHash` validation, block height, nonce, and transaction identifier.
-4. **Instant Third-Party Verification:** Public employers, embassies, and universities can verify authenticity via drag-and-drop document comparison or Certificate ID lookup in under 50 milliseconds.
+CertiChain is structured into **2 clear entities** designed for practical university deployment and academic viva presentation:
 
----
-
-## 🎨 Enterprise Design System
-- **Palette:** White-first (#FFFFFF surface, #F7F9FC backdrop), Deep Institutional Navy (`#123B5D`), Cobalt Accent (`#2563EB`), Emerald Verified (`#16A34A`), Amber Pending (`#D97706`), Rose Warning/Mismatch (`#DC2626`).
-- **Typography:** Inter & JetBrains Mono for cryptographic hashes.
-- **Components:** Subtle 12-16px rounded borders, compact financial tables, real interactive Steppers, Recharts analytics, and zero neon/crypto visual clutter.
-
----
-
-## 🚀 Routes & Pages Implemented
-
-| Route | Page | Description |
-|---|---|---|
-| `/` | **Landing Page** | Public portal hero, How It Works (01-04), architectural trust principles, and technical FAQ. |
-| `/verify` | **Public Verification** | Dual-method verification (File Drag-and-drop & Certificate ID lookup) with live 5-step cryptographic pipeline. |
-| `/verify/:id` | **Verification Result** | Comprehensive genuine/mismatch panels, hash delta comparison, and audit trail timeline. |
-| `/login` | **Institution Sign In** | Split-screen enterprise login with demo pre-fill accounts and audit logging indicators. |
-| `/dashboard` | **Institution Dashboard** | 4 financial-grade KPI cards, Verification Volume Area Chart, Program Donut Chart, and recent ledger table. |
-| `/certificates` | **Certificates Registry** | Search, filter by program/status, CSV export, and on-chain revocation modal. |
-| `/certificates/issue` | **Issue Certificate** | 5-step registration wizard: Metadata → File Intake → SHA-256 Generation → Block Anchor → Ledger Receipt. |
-| `/blockchain` | **Blockchain Explorer** | Visual sequential chain with connecting links, block inspector modal, search, and deep Merkle integrity audit. |
-| `/blockchain/:blockId` | **Block Details** | Deep block header inspection, transactions, and validator node details. |
-| `/transactions` | **Transactions Log** | Registration, update, and revocation ledger entries. |
-| `/audit` | **Audit Logs** | Security operator actions, session IPs, and resource targets. |
-| `/analytics` | **Analytics & Performance**| Recharts volume trends, program distributions, and tamper detection intercepts. |
-| `/security` | **Security Center** | Interactive blockchain tamper test (corrupt block #1 & heal), system health telemetry. |
-| `/institution` | **Institution Profile** | Vishwakarma Institute of Technology accreditation, node ID, and key custodians. |
-| `/settings` | **Settings** | Consensus thresholds, keystore preferences, and automated SIEM webhooks. |
+```
+                            [ CertiChain System ]
+                                      │
+            ┌─────────────────────────┴─────────────────────────┐
+            │                                                   │
+  [ 🌐 Public Verifiers ]                            [ 🏛️ University Authority ]
+  (Companies, Recruiters, Students)                   (Dean / Registrar of VIT Pune)
+            │                                                   │
+    • Zero Login Required                               • Single Login (/login)
+    • Direct Verification on Landing Page (/)           • Overview Dashboard (/institution/dashboard)
+    • PDF Drag-and-Drop SHA-256 Check (/verify)         • Issue Certificate (/institution/issue)
+    • Instant Valid / Forgery / Revoked Result          • Issued Registry (/institution/certificates)
+    • Print Official Verification Proof                 • Blockchain Ledger (/institution/blockchain)
+```
 
 ---
 
-## 🔑 Demo Accounts
+## 🔐 Core Cryptographic & Blockchain Engine (`backend/blockchain/`)
 
-- **Institution Admin (Dean / Registrar):** `admin@certichain.demo`
-- **Third-Party Verifier (HR / Background Screener):** `verifier@certichain.demo`
-- *(Pre-filled buttons available directly on the login screen for instant evaluation)*
+All core blockchain concepts are cleanly implemented in Python for easy inspection, testing, and viva defense:
+
+1. **Deterministic SHA-256 Hashing (`crypto.py`):**
+   - Documents are hashed locally; raw student PDFs are never exposed or stored on-chain.
+   - Any modification of a grade or name changes the hash completely due to the cryptographic avalanche effect.
+
+2. **Asymmetric Digital Signatures — ECDSA P-256 (`crypto.py`):**
+   - The university generates an elliptic-curve keypair (NIST P-256 / SECP256R1).
+   - Certificates are signed with the University's private key (`sign_hash_with_private_key`).
+   - Anyone can verify the signature with the public key (`verify_signature_with_public_key`), establishing authentic **Proof of Origin**.
+
+3. **Binary Merkle Tree & Inclusion Proofs (`merkle.py`):**
+   - Transactions inside every block are hashed pairwise into a single Merkle Root.
+   - Generates and verifies cryptographic **Merkle Audit Paths** proving a certificate's inclusion in a block without downloading the entire chain.
+
+4. **Proof of Authority (PoA) Consensus (`consensus.py`):**
+   - 3 Authorized Validator Nodes: *Dean of Academic Affairs*, *Head of Examination Cell*, and *Academic Senate*.
+   - Requires a 2/3 threshold quorum approval before any block is sealed onto the ledger.
+
+5. **Append-Only Revocation Registry (`chain.py`):**
+   - Revocation never deletes or overwrites historical blocks.
+   - Appends an immutable `Certificate Revocation` transaction with reason and timestamp. The verification engine checks the latest state.
+
+---
+
+## 🚀 Clean Routes
+
+| Route | Access | Purpose |
+| :--- | :--- | :--- |
+| `/` | **Public (No Login)** | Landing page with instant Certificate ID search and How It Works walkthrough. |
+| `/verify` | **Public (No Login)** | Full-featured verification studio (PDF Drag-and-drop & Certificate ID lookup) with live cryptographic checks. |
+| `/login` | **Public** | Institution administrator sign-in. |
+| `/institution/dashboard` | **Institution Only** | Issuance overview, total degrees issued, and recent activity. |
+| `/institution/issue` | **Institution Only** | Issue degree wizard: Student Name, Roll No, Degree, CGPA, SHA-256 computation, and on-chain block minting. |
+| `/institution/certificates` | **Institution Only** | Searchable registry of all issued degrees, CSV export, and on-chain revocation modal. |
+| `/institution/blockchain` | **Institution Only** | Visual sequential block explorer showing block heights, previousHash links, block hashes, and Merkle roots. |
+
+---
+
+## 🔑 Login Credentials
+
+- **Institution Authority (Dean / Registrar):**
+  - Email: `admin@certichain.demo`
+  - Password: Any password (or click **Auto-Fill** on the login page)
+- **Companies, HR Recruiters, Students:**
+  - **No login needed!** Use the search bar on `/` or the dropzone on `/verify`.
 
 ---
 
 ## 💻 Running the Application
 
-### Frontend (Active Vite Server)
+### 1. Python Backend (FastAPI Core)
+```bash
+cd backend
+python -m uvicorn main:app --host 0.0.0.0 --port 5000 --reload
+```
+API Documentation available at: **[http://localhost:5000/docs](http://localhost:5000/docs)**
+
+### 2. React Client (Vite Dev Server)
 ```bash
 cd client
 npm install
 npm run dev
 ```
-Open **[http://localhost:5173](http://localhost:5173)** in your browser.
+Open **[http://localhost:3001](http://localhost:3001)** in your browser.

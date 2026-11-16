@@ -85,11 +85,12 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [user]);
 
   const login = (email: string, role: 'SUPER_ADMIN' | 'INSTITUTION_ADMIN' | 'VERIFIER' = 'INSTITUTION_ADMIN') => {
+    const isVerifierRole = role === 'VERIFIER';
     const newUser: User = {
       email,
       role,
-      institutionName: 'Vishwakarma Institute of Technology',
-      name: role === 'INSTITUTION_ADMIN' ? 'Dr. Rajesh K. Kulkarni (Dean)' : 'Auditor / Verifier'
+      institutionName: isVerifierRole ? 'Tata Consultancy Services (TCS HR)' : 'Vishwakarma Institute of Technology',
+      name: isVerifierRole ? 'Pooja Verma (Lead Talent Screener)' : 'Dr. Rajesh K. Kulkarni (Dean & Registrar)'
     };
     setUser(newUser);
     const newLog: AuditLog = {
@@ -97,7 +98,7 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       timestamp: new Date().toISOString(),
       user: email,
       action: 'Login',
-      resource: 'Institutional Session Created',
+      resource: isVerifierRole ? 'Corporate Verifier Workspace Activated' : 'Institutional Registrar Session Initialized',
       ipSession: '192.168.1.104 (Authenticated Session)',
       status: 'Success'
     };

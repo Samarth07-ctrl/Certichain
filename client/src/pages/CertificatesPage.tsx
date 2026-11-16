@@ -90,7 +90,7 @@ export const CertificatesPage: React.FC = () => {
               Export CSV
             </button>
             <button
-              onClick={() => navigate('/certificates/issue')}
+              onClick={() => navigate('/institution/issue')}
               className="px-3.5 py-2 text-xs font-medium text-white bg-[#123B5D] hover:bg-[#0E2E49] rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />

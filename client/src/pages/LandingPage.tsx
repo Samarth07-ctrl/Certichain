@@ -80,21 +80,57 @@ export const LandingPage: React.FC = () => {
               "Trust academic credentials without trusting the document."
             </blockquote>
 
+            {/* Quick Public Verification Input */}
+            <div className="pt-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const target = (e.currentTarget.elements.namedItem('certId') as HTMLInputElement)?.value;
+                  if (target?.trim()) {
+                    navigate(`/verify?q=${encodeURIComponent(target.trim())}`);
+                  } else {
+                    navigate('/verify');
+                  }
+                }}
+                className="flex flex-col sm:flex-row gap-2 max-w-lg"
+              >
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    name="certId"
+                    type="text"
+                    placeholder="Enter Certificate ID (e.g. CERT-2026-001284)..."
+                    className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-[#123B5D] hover:bg-[#0E2E49] text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Verify Credential</span>
+                </button>
+              </form>
+              <div className="text-[11px] text-[#64748B] mt-2 flex items-center gap-2">
+                <span>Free for all companies, recruiters & students · No login needed</span>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 to="/verify"
-                className="px-5 py-2.5 bg-[#123B5D] text-white font-semibold text-xs sm:text-sm rounded-lg hover:bg-[#0E2E49] transition-colors shadow-xs inline-flex items-center gap-2"
+                className="px-4 py-2 bg-white text-slate-700 font-semibold text-xs border border-[#E5E7EB] rounded-lg hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1.5"
               >
-                <Search className="w-4 h-4" />
-                <span>Verify a Certificate</span>
+                <Search className="w-3.5 h-3.5 text-[#2563EB]" />
+                <span>Open Full Verification Studio (PDF Dropzone)</span>
               </Link>
 
               <Link
                 to="/login"
-                className="px-5 py-2.5 bg-white text-slate-700 font-semibold text-xs sm:text-sm border border-[#E5E7EB] rounded-lg hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1.5"
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold text-xs rounded-lg hover:bg-slate-200 transition-colors inline-flex items-center gap-1.5"
               >
-                <span>Institution Node Portal</span>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <Building2 className="w-3.5 h-3.5 text-slate-600" />
+                <span>Institution Login</span>
               </Link>
             </div>
           </div>

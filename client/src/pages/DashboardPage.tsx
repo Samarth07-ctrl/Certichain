@@ -60,26 +60,17 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Institutional Verification Operations"
-        subtitle={`Real-time ledger overview for ${institution.name}`}
-        badge="Active Node #6112"
+        title="Institution Overview & Issuance Ledger"
+        subtitle={`Real-time credential authority operations for ${institution.name}`}
+        badge="Autonomous Node Active"
         actions={
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/verify')}
-              className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-[#E5E7EB] rounded-lg hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 shadow-2xs"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              Public Verification Portal
-            </button>
-            <button
-              onClick={() => navigate('/certificates/issue')}
-              className="px-3.5 py-2 text-xs font-medium text-white bg-[#123B5D] hover:bg-[#0E2E49] rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Issue Certificate
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/institution/issue')}
+            className="px-4 py-2 text-xs font-semibold text-white bg-[#123B5D] hover:bg-[#0E2E49] rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Issue New Certificate</span>
+          </button>
         }
       />
 
@@ -243,7 +234,7 @@ export const DashboardPage: React.FC = () => {
             </p>
           </div>
           <NavLink
-            to="/certificates"
+            to="/institution/certificates"
             className="text-xs font-semibold text-[#2563EB] hover:text-blue-700 inline-flex items-center gap-1"
           >
             <span>View All ({certificates.length})</span>
@@ -282,7 +273,7 @@ export const DashboardPage: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     <NavLink
-                      to={`/blockchain/${cert.blockNumber}`}
+                      to={`/institution/blockchain/${cert.blockNumber}`}
                       className="font-mono text-[#2563EB] hover:underline"
                     >
                       #{cert.blockNumber}
@@ -292,12 +283,12 @@ export const DashboardPage: React.FC = () => {
                     <StatusBadge status={cert.status} />
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => navigate(`/verify/${cert.certificateId}`)}
+                    <NavLink
+                      to={`/institution/certificates`}
                       className="px-2.5 py-1 text-[11px] font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors"
                     >
-                      Audit
-                    </button>
+                      Inspect
+                    </NavLink>
                   </td>
                 </tr>
               ))}

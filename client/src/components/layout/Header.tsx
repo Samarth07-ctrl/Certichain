@@ -1,27 +1,24 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   Search, 
-  Bell, 
   Menu, 
   ShieldCheck, 
-  CheckCircle2, 
-  ExternalLink,
-  ChevronRight,
-  Database
+  FilePlus2,
+  CheckCircle2,
+  Building2
 } from 'lucide-react';
 import { useBlockchain } from '../../context/BlockchainContext';
 
 export const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) => {
-  const { user, institution, certificates } = useBlockchain();
+  const { user, institution } = useBlockchain();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    navigate(`/verify?q=${encodeURIComponent(searchQuery.trim())}`);
+    navigate(`/institution/certificates?q=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   return (
@@ -39,11 +36,11 @@ export const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
         <div className="hidden sm:block">
           <div className="flex items-center gap-2">
             <h1 className="text-sm font-semibold text-[#111827]">
-              Good morning, {user?.name.split(' ')[0] || 'Administrator'}
+              Welcome, {user?.name.split(' ')[0] || 'Registrar'}
             </h1>
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-              Node Synced
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-500 animate-pulse"></span>
+              Ledger Node Active
             </span>
           </div>
           <div className="text-[11px] text-[#64748B]">
@@ -52,7 +49,7 @@ export const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
         </div>
       </div>
 
-      {/* Middle: Quick Search */}
+      {/* Middle: Quick Search in Registry */}
       <div className="flex-1 max-w-md mx-4 hidden md:block">
         <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
@@ -60,63 +57,21 @@ export const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSide
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Quick search certificate ID (e.g. CERT-2026-001284) or hash..."
+            placeholder="Search issued certificates by Student Name, Roll No or ID..."
             className="w-full pl-9 pr-4 py-1.5 text-xs bg-[#F7F9FC] border border-[#E5E7EB] rounded-lg focus:outline-none focus:bg-white focus:border-[#2563EB] transition-colors"
           />
         </form>
       </div>
 
-      {/* Right: Quick actions, notifications, status */}
+      {/* Right: Quick Action Button */}
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
-            title="Notifications & Alerts"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500"></span>
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-[#E5E7EB] rounded-xl shadow-lg p-3 z-50 text-xs">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#E5E7EB] font-semibold text-[#111827]">
-                <span>System Security Alerts</span>
-                <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-[#64748B]">Latest</span>
-              </div>
-              <div className="space-y-2">
-                <div className="p-2 rounded bg-amber-50 border border-amber-200">
-                  <div className="font-semibold text-amber-900">Tamper Attempt Logged</div>
-                  <div className="text-amber-700 text-[11px] mt-0.5">
-                    Hash mismatch detected on CERT-2026-001284 via public portal verification.
-                  </div>
-                </div>
-                <div className="p-2 rounded bg-slate-50 border border-slate-200">
-                  <div className="font-semibold text-slate-800">New Block Added</div>
-                  <div className="text-slate-600 text-[11px] mt-0.5">
-                    Block #5 registered successfully with 2 transactions.
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
-
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#123B5D] text-white flex items-center justify-center font-semibold text-xs border border-slate-200">
-            {user?.name.charAt(0) || 'A'}
-          </div>
-          <div className="hidden xl:block text-left">
-            <div className="text-xs font-semibold text-[#111827] leading-none">
-              {user?.name || 'Administrator'}
-            </div>
-            <div className="text-[10px] text-[#64748B] mt-0.5">
-              {user?.role === 'SUPER_ADMIN' ? 'Super Administrator' : 'Dean / Registrar'}
-            </div>
-          </div>
-        </div>
+        <Link
+          to="/institution/issue"
+          className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#123B5D] hover:bg-[#0E2E49] rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-xs"
+        >
+          <FilePlus2 className="w-3.5 h-3.5" />
+          <span>Issue Certificate</span>
+        </Link>
       </div>
     </header>
   );

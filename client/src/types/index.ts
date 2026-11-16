@@ -65,7 +65,7 @@ export interface Institution {
 }
 
 export interface VerificationResultData {
-  status: 'VERIFIED' | 'MISMATCH' | 'NOT_FOUND';
+  status: 'VERIFIED' | 'MISMATCH' | 'NOT_FOUND' | 'REVOKED';
   certificateId: string;
   studentName?: string;
   institution?: string;
@@ -80,4 +80,7 @@ export interface VerificationResultData {
   blockchainRecord: 'FOUND' | 'NOT_FOUND';
   issuingInstitution: 'VERIFIED' | 'UNVERIFIED';
   isRevoked?: boolean;
+  digitalSignature?: string;
+  issuerPublicKey?: string;
+  merkleProof?: any;
 }

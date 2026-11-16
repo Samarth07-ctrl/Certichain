@@ -484,7 +484,7 @@ export const IssueCertificatePage: React.FC = () => {
               Verify in Public Portal
             </button>
             <button
-              onClick={() => navigate(`/blockchain/${registeredCert.blockNumber}`)}
+              onClick={() => navigate(`/institution/blockchain/${registeredCert.blockNumber}`)}
               className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5"
             >
               <Blocks className="w-3.5 h-3.5 text-blue-600" />
