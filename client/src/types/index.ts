@@ -36,6 +36,8 @@ export interface Block {
   hash: string;
   validator: string;
   nonce?: number;
+  merkleRoot?: string;
+  consensusApprovals?: any[];
 }
 
 export interface AuditLog {

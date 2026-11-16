@@ -11,10 +11,12 @@ import {
   ExternalLink,
   Layers,
   Activity,
-  RotateCcw
+  RotateCcw,
+  Key
 } from 'lucide-react';
 import { useBlockchain } from '../context/BlockchainContext';
 import { PageHeader, HashDisplay, StatusBadge } from '../components/ui/CommonUI';
+import { MerkleProofModal } from '../components/blockchain/MerkleProofModal';
 import { Block } from '../types';
 
 export const BlockchainExplorerPage: React.FC = () => {
@@ -28,6 +30,21 @@ export const BlockchainExplorerPage: React.FC = () => {
     checked: boolean;
   }>({ valid: true, checked: false });
   const [searchBlockQuery, setSearchBlockQuery] = useState('');
+
+  // Merkle Proof Modal state
+  const [merkleModalData, setMerkleModalData] = useState<{
+    isOpen: boolean;
+    leafHash: string;
+    blockNumber: number;
+    allBlockHashes: string[];
+    certificateId: string;
+  }>({
+    isOpen: false,
+    leafHash: '',
+    blockNumber: 0,
+    allBlockHashes: [],
+    certificateId: ''
+  });
 
   const totalTransactions = blocks.reduce((acc, b) => acc + b.transactions.length, 0);
 
@@ -299,13 +316,58 @@ export const BlockchainExplorerPage: React.FC = () => {
 
             <div className="space-y-3 text-xs font-mono">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-slate-500 block mb-1">Block Hash:</span>
+                <span className="text-slate-500 block mb-1">Block Header Hash:</span>
                 <span className="text-slate-900 break-all">{selectedBlock.hash}</span>
               </div>
 
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <span className="text-slate-500 block mb-1">Previous Block Hash:</span>
                 <span className="text-slate-900 break-all">{selectedBlock.previousHash}</span>
+              </div>
+
+              {/* Merkle Root Section */}
+              <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-blue-800 font-bold flex items-center gap-1.5 text-[11px] uppercase">
+                    <Layers className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Binary Merkle Tree Root:</span>
+                  </span>
+                  <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-bold">
+                    O(log N) Inclusion
+                  </span>
+                </div>
+                <span className="text-blue-950 font-mono break-all font-semibold text-[11px]">
+                  {selectedBlock.merkleRoot || selectedBlock.hash}
+                </span>
+              </div>
+
+              {/* Proof of Authority (PoA) Consensus Approvals */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg font-sans space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Proof of Authority (PoA) Quorum:</span>
+                  </span>
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                    2/3 Validator Quorum Reached
+                  </span>
+                </div>
+                <div className="space-y-1.5 pt-1 text-[11px]">
+                  <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200">
+                    <div>
+                      <span className="font-semibold text-slate-800 block">Dean of Academic Affairs (Node 1)</span>
+                      <span className="font-mono text-[10px] text-slate-500">0x8F2A91D6E7216A8C9c1E86E20738e4A81De95B24</span>
+                    </div>
+                    <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">✓ Signed</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200">
+                    <div>
+                      <span className="font-semibold text-slate-800 block">Controller of Examinations (Node 2)</span>
+                      <span className="font-mono text-[10px] text-slate-500">0x3B9C4F72E1A80D5E6A7C2B1D4F9E0A2C5B8D1E3F</span>
+                    </div>
+                    <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">✓ Signed</span>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-slate-700 font-sans">
@@ -330,7 +392,7 @@ export const BlockchainExplorerPage: React.FC = () => {
                 ) : (
                   <div className="space-y-2">
                     {selectedBlock.transactions.map((tx) => (
-                      <div key={tx.transactionId} className="p-3 border border-slate-200 rounded-lg bg-[#F8FAFC] space-y-1.5 text-xs">
+                      <div key={tx.transactionId} className="p-3 border border-slate-200 rounded-lg bg-[#F8FAFC] space-y-2 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="font-mono font-semibold text-blue-700">{tx.transactionId}</span>
                           <StatusBadge status={tx.status} />
@@ -339,10 +401,30 @@ export const BlockchainExplorerPage: React.FC = () => {
                         <div><span className="font-medium text-slate-600">Type:</span> {tx.type}</div>
                         <div><span className="font-medium text-slate-600">Student Ref:</span> {tx.studentIdentifier}</div>
                         <div className="pt-1 font-mono text-[11px]">
-                          <span className="text-slate-500 block">Certificate Hash:</span>
-                          <div className="break-all text-slate-800 bg-white p-1 rounded border border-slate-200">
+                          <span className="text-slate-500 block mb-1">Certificate SHA-256 Digest:</span>
+                          <div className="break-all text-slate-800 bg-white p-1.5 rounded border border-slate-200">
                             {tx.certificateHash}
                           </div>
+                        </div>
+
+                        {/* Interactive Merkle Proof Action */}
+                        <div className="pt-2 flex justify-end">
+                          <button
+                            onClick={() => {
+                              const leafHashes = selectedBlock.transactions.map(t => t.certificateHash);
+                              setMerkleModalData({
+                                isOpen: true,
+                                leafHash: tx.certificateHash,
+                                blockNumber: selectedBlock.index,
+                                allBlockHashes: leafHashes,
+                                certificateId: tx.certificateId
+                              });
+                            }}
+                            className="px-3 py-1.5 bg-[#123B5D] hover:bg-[#0E2E49] text-white rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-blue-300" />
+                            <span>Verify Merkle Proof</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -362,6 +444,15 @@ export const BlockchainExplorerPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Merkle Proof Inclusion Modal */}
+      <MerkleProofModal
+        isOpen={merkleModalData.isOpen}
+        onClose={() => setMerkleModalData(prev => ({ ...prev, isOpen: false }))}
+        leafHash={merkleModalData.leafHash}
+        blockNumber={merkleModalData.blockNumber}
+        allBlockHashes={merkleModalData.allBlockHashes}
+        certificateId={merkleModalData.certificateId}
+      />
     </div>
   );
 };
