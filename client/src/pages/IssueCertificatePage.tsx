@@ -22,6 +22,7 @@ import { useBlockchain } from '../context/BlockchainContext';
 import { PageHeader, HashDisplay } from '../components/ui/CommonUI';
 import { calculateSHA256 } from '../utils/crypto';
 import { ClientMerkleTree } from '../utils/merkle';
+import { VisualMerkleTree } from '../components/blockchain/VisualMerkleTree';
 import { Certificate } from '../types';
 
 export const IssueCertificatePage: React.FC = () => {
@@ -34,6 +35,7 @@ export const IssueCertificatePage: React.FC = () => {
   // Batch issuance state
   const [batchCandidates, setBatchCandidates] = useState<any[]>([]);
   const [batchMerkleRoot, setBatchMerkleRoot] = useState<string>('');
+  const [batchTreeLevels, setBatchTreeLevels] = useState<string[][]>([]);
   const [isBuildingTree, setIsBuildingTree] = useState<boolean>(false);
   const [isMintingBatch, setIsMintingBatch] = useState<boolean>(false);
   const [batchResult, setBatchResult] = useState<{ blockNumber: number; count: number; merkleRoot: string; certs: Certificate[] } | null>(null);
@@ -188,6 +190,7 @@ export const IssueCertificatePage: React.FC = () => {
     ];
     setBatchCandidates(samples);
     setBatchMerkleRoot('');
+    setBatchTreeLevels([]);
     setBatchResult(null);
   };
 
@@ -216,6 +219,7 @@ export const IssueCertificatePage: React.FC = () => {
     const tree = new ClientMerkleTree(leaves);
     const root = await tree.buildTree();
     setBatchMerkleRoot(root);
+    setBatchTreeLevels(tree.levels);
     setIsBuildingTree(false);
   };
 
@@ -289,6 +293,7 @@ Kabir Singhania,VIT-2022-IT-089,B.Tech Information Technology,Department of Info
     if (parsed.length > 0) {
       setBatchCandidates(parsed);
       setBatchMerkleRoot('');
+      setBatchTreeLevels([]);
       setBatchResult(null);
     }
   };
@@ -988,7 +993,7 @@ Kabir Singhania,VIT-2022-IT-089,B.Tech Information Technology,Department of Info
                       <div className="bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs space-y-2">
                         <div className="text-[11px] text-slate-400 flex justify-between">
                           <span>Calculated Merkle Root:</span>
-                          <span className="text-emerald-400">Leaves: {batchCandidates.length} · Tree Height: 3</span>
+                          <span className="text-emerald-400">Leaves: {batchCandidates.length} · Tree Height: {batchTreeLevels.length}</span>
                         </div>
                         <div className="break-all text-emerald-400 bg-black/40 p-2.5 rounded border border-slate-800 select-all">
                           {batchMerkleRoot}
@@ -997,6 +1002,20 @@ Kabir Singhania,VIT-2022-IT-089,B.Tech Information Technology,Department of Info
                           <span>Target: Single Block #{blocks.length} (Previous: {blocks.length > 0 ? blocks[blocks.length - 1].hash.slice(0, 16) : 'Genesis'}...)</span>
                           <span className="text-blue-300">Ready to commit</span>
                         </div>
+                      </div>
+                    )}
+
+                    {batchMerkleRoot && batchTreeLevels.length > 0 && (
+                      <div className="pt-2">
+                        <VisualMerkleTree
+                          levels={batchTreeLevels}
+                          root={batchMerkleRoot}
+                          leafLabels={batchCandidates.map((c) => ({
+                            title: c.studentName,
+                            subtitle: `${c.studentId} · ${c.grade}`,
+                            hash: c.hash || ''
+                          }))}
+                        />
                       </div>
                     )}
                   </div>

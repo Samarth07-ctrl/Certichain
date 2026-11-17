@@ -11,6 +11,7 @@ import {
   Play
 } from 'lucide-react';
 import { ClientMerkleTree, MerkleProof } from '../../utils/merkle';
+import { VisualMerkleTree } from './VisualMerkleTree';
 
 interface MerkleProofModalProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ export const MerkleProofModal: React.FC<MerkleProofModalProps> = ({
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [computedProof, setComputedProof] = useState<MerkleProof | null>(null);
   const [computedRoot, setComputedRoot] = useState<string>(leafHash);
+  const [treeLevels, setTreeLevels] = useState<string[][]>([]);
+  const [viewMode, setViewMode] = useState<'graph' | 'steps'>('graph');
   const [verificationResult, setVerificationResult] = useState<{
     valid: boolean;
     calculatedRoot: string;
@@ -46,6 +49,7 @@ export const MerkleProofModal: React.FC<MerkleProofModalProps> = ({
       const root = await tree.buildTree();
       if (isMounted) {
         setComputedRoot(root);
+        setTreeLevels(tree.levels);
         const p = tree.getProof(leafHash);
         setComputedProof(p);
       }
@@ -104,61 +108,106 @@ export const MerkleProofModal: React.FC<MerkleProofModalProps> = ({
           </span>
         </div>
 
-        {/* Visual Proof Path */}
-        <div className="my-6 space-y-4">
-          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <span>Cryptographic Proof Path (Leaf ➔ Sibling ➔ Merkle Root)</span>
-          </h4>
-
-          {/* Leaf Node */}
-          <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs space-y-1">
-            <div className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
-              <span>Leaf 0 (Target Certificate Hash)</span>
-              <span>Input</span>
-            </div>
-            <div className="font-mono text-[11px] text-blue-900 break-all select-all">
-              {leafHash}
-            </div>
-          </div>
-
-          {proofSteps.length > 0 ? (
-            proofSteps.map((step, idx) => (
-              <div key={idx} className="space-y-3">
-                <div className="flex justify-center text-slate-400">
-                  <ArrowDown className="w-4 h-4 animate-bounce" />
-                </div>
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
-                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase">
-                    <span>Audit Step #{idx + 1} ({step.position.toUpperCase()} Sibling Hash)</span>
-                    <span className="font-mono">Pairwise SHA-256</span>
-                  </div>
-                  <div className="font-mono text-[11px] text-slate-700 break-all select-all">
-                    {step.sibling}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-2 text-xs text-slate-500 italic">
-              Single-transaction block: Leaf hash directly reduces to Block Merkle Root.
-            </div>
-          )}
-
-          <div className="flex justify-center text-slate-400">
-            <ArrowDown className="w-4 h-4 text-emerald-600 font-bold" />
-          </div>
-
-          {/* Root Node */}
-          <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs space-y-1">
-            <div className="flex justify-between items-center text-[10px] font-bold text-emerald-800 uppercase">
-              <span>Block #{blockNumber} Merkle Root</span>
-              <span className="text-emerald-700 font-semibold">Ledger Anchor</span>
-            </div>
-            <div className="font-mono text-[11px] text-emerald-950 font-bold break-all select-all">
-              {computedRoot || leafHash}
-            </div>
-          </div>
+        {/* View Mode Toggle: Interactive Binary Tree vs Step-by-Step Path */}
+        <div className="flex items-center gap-2 mt-4 border-b border-slate-200 pb-2">
+          <button
+            type="button"
+            onClick={() => setViewMode('graph')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+              viewMode === 'graph'
+                ? 'bg-[#123B5D] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Interactive Binary Tree Graph</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('steps')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+              viewMode === 'steps'
+                ? 'bg-[#123B5D] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <span>Step-by-Step Inclusion Path</span>
+          </button>
         </div>
+
+        {/* 1. Graphical Binary Tree View */}
+        {viewMode === 'graph' && (
+          <div className="my-6">
+            <VisualMerkleTree
+              levels={treeLevels}
+              root={computedRoot}
+              activeLeafHash={leafHash}
+              leafLabels={allBlockHashes.map((h, i) => ({
+                title: h === leafHash ? `Target: ${certificateId}` : `Tx Leaf #${i + 1}`,
+                subtitle: h === leafHash ? 'Active Target Leaf' : 'Sibling Node',
+                hash: h
+              }))}
+            />
+          </div>
+        )}
+
+        {/* 2. Step-by-Step Sequential Path View */}
+        {viewMode === 'steps' && (
+          <div className="my-6 space-y-4">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span>Cryptographic Proof Path (Leaf ➔ Sibling ➔ Merkle Root)</span>
+            </h4>
+
+            {/* Leaf Node */}
+            <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs space-y-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-blue-700 uppercase">
+                <span>Leaf 0 (Target Certificate Hash)</span>
+                <span>Input</span>
+              </div>
+              <div className="font-mono text-[11px] text-blue-900 break-all select-all">
+                {leafHash}
+              </div>
+            </div>
+
+            {proofSteps.length > 0 ? (
+              proofSteps.map((step, idx) => (
+                <div key={idx} className="space-y-3">
+                  <div className="flex justify-center text-slate-400">
+                    <ArrowDown className="w-4 h-4 animate-bounce" />
+                  </div>
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase">
+                      <span>Audit Step #{idx + 1} ({step.position.toUpperCase()} Sibling Hash)</span>
+                      <span className="font-mono">Pairwise SHA-256</span>
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-700 break-all select-all">
+                      {step.sibling}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-2 text-xs text-slate-500 italic">
+                Single-transaction block: Leaf hash directly reduces to Block Merkle Root.
+              </div>
+            )}
+
+            <div className="flex justify-center text-slate-400">
+              <ArrowDown className="w-4 h-4 text-emerald-600 font-bold" />
+            </div>
+
+            {/* Root Node */}
+            <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs space-y-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-emerald-800 uppercase">
+                <span>Block #{blockNumber} Merkle Root</span>
+                <span className="text-emerald-700 font-semibold">Ledger Anchor</span>
+              </div>
+              <div className="font-mono text-[11px] text-emerald-950 font-bold break-all select-all">
+                {computedRoot || leafHash}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Verification Trigger & Output */}
         <div className="pt-4 border-t border-slate-200 space-y-4">
