@@ -24,6 +24,7 @@ interface BlockchainContextType {
   blocks: Block[];
   auditLogs: AuditLog[];
   institution: Institution;
+  verificationCount: number;
   isChainValid: () => Promise<{ valid: boolean; failedIndex?: number; reason?: string }>;
   registerCertificate: (certData: Omit<Certificate, 'id' | 'blockNumber' | 'transactionId' | 'status' | 'createdAt'>) => Promise<Certificate>;
   revokeCertificate: (certId: string, reason?: string) => Promise<boolean>;
@@ -46,6 +47,11 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       institutionName: 'Vishwakarma Institute of Technology',
       name: 'Dr. Rajesh K. Kulkarni'
     };
+  });
+
+  const [verificationCount, setVerificationCount] = useState<number>(() => {
+    const saved = localStorage.getItem('certichain_verification_count');
+    return saved ? parseInt(saved, 10) : 142;
   });
 
   const [certificates, setCertificates] = useState<Certificate[]>(() => {
@@ -416,6 +422,12 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ...prev
     ]);
 
+    setVerificationCount(prev => {
+      const next = prev + 1;
+      localStorage.setItem('certichain_verification_count', next.toString());
+      return next;
+    });
+
     return result;
   };
 
@@ -453,6 +465,7 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         blocks,
         auditLogs,
         institution,
+        verificationCount,
         isChainValid,
         registerCertificate,
         revokeCertificate,

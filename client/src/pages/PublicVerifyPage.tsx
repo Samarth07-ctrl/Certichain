@@ -65,7 +65,20 @@ export const PublicVerifyPage: React.FC = () => {
     await new Promise(r => setTimeout(r, 450));
 
     let fileBuffer: ArrayBuffer | undefined;
+    let extractedId = targetId || certificateIdInput.trim();
+
     if (file) {
+      if (file.name.endsWith('.json') || file.type === 'application/json') {
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          if (parsed.certificateId) {
+            extractedId = parsed.certificateId;
+          }
+        } catch (e) {
+          // treat as binary
+        }
+      }
       fileBuffer = await file.arrayBuffer();
     }
 
@@ -75,7 +88,7 @@ export const PublicVerifyPage: React.FC = () => {
     setVerificationStep(4); // Comparing Hash
     await new Promise(r => setTimeout(r, 350));
 
-    const verifyTarget = targetId || certificateIdInput.trim();
+    const verifyTarget = extractedId;
     const verificationData = await verifyCertificateByIdOrHash(verifyTarget, fileBuffer);
 
     setVerificationStep(5); // Complete

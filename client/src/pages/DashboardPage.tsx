@@ -14,7 +14,7 @@ import { useBlockchain } from '../context/BlockchainContext';
 import { StatCard, StatusBadge, HashDisplay, PageHeader } from '../components/ui/CommonUI';
 
 export const DashboardPage: React.FC = () => {
-  const { certificates, blocks, institution } = useBlockchain();
+  const { certificates, blocks, institution, verificationCount } = useBlockchain();
   const navigate = useNavigate();
 
   const totalIssued = certificates.length + 1279;
@@ -36,10 +36,10 @@ export const DashboardPage: React.FC = () => {
         }
       />
 
-      {/* 3 Focused Institutional Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* 4 Focused Institutional Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Degrees / Certificates Issued"
+          title="Total Degrees Issued"
           value={totalIssued.toLocaleString()}
           change="+12.4% this year"
           isPositive={true}
@@ -47,19 +47,27 @@ export const DashboardPage: React.FC = () => {
           icon={FileCheck2}
         />
         <StatCard
+          title="Public Verifications"
+          value={verificationCount.toLocaleString()}
+          change="Live Sync"
+          isPositive={true}
+          subtitle="Portal & Recruiter queries logged"
+          icon={ShieldCheck}
+        />
+        <StatCard
           title="Blockchain Ledger Height"
           value={`Block #${blocks.length}`}
-          subtitle="100% Immutable Cryptographic Integrity"
+          subtitle="100% Immutable Integrity"
           isPositive={true}
           icon={Blocks}
         />
         <StatCard
-          title="Institutional Signer Node"
-          value="Autonomous Active"
-          change="ECDSA P-256 Enabled"
+          title="Signer Node & Consensus"
+          value="PoA 2/3 Quorum"
+          change="ECDSA P-256"
           isPositive={true}
           subtitle={institution.code}
-          icon={ShieldCheck}
+          icon={Award}
         />
       </div>
 

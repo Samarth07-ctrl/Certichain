@@ -78,6 +78,26 @@ export const IssueCertificatePage: React.FC = () => {
     setIsHashing(false);
   };
 
+  const handleDownloadCredential = () => {
+    if (uploadedFile) {
+      const url = URL.createObjectURL(uploadedFile);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = uploadedFile.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (registeredCert) {
+      const credentialData = JSON.stringify(registeredCert, null, 2);
+      const blob = new Blob([credentialData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${registeredCert.certificateId}_credential.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
   const handleRegisterOnChain = async () => {
     setIsMining(true);
     try {
@@ -476,6 +496,13 @@ export const IssueCertificatePage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={handleDownloadCredential}
+              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg inline-flex items-center gap-1.5 shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              Download Credential File
+            </button>
             <button
               onClick={() => navigate(`/verify/${registeredCert.certificateId}`)}
               className="px-4 py-2 text-xs font-semibold text-white bg-[#123B5D] hover:bg-[#0E2E49] rounded-lg inline-flex items-center gap-1.5"
