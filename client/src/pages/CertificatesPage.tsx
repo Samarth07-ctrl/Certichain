@@ -183,7 +183,7 @@ export const CertificatesPage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4">
                       <button
-                        onClick={() => navigate(`/blockchain/${cert.blockNumber}`)}
+                        onClick={() => navigate(`/institution/blockchain/${cert.blockNumber}`)}
                         className="font-mono text-[#2563EB] hover:underline bg-blue-50/50 px-2 py-0.5 rounded border border-blue-100"
                       >
                         Block #{cert.blockNumber}
@@ -256,14 +256,30 @@ export const CertificatesPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Reason for Revocation (Audited in block metadata)
+                Reason for Revocation (Audited in block metadata) *
               </label>
               <textarea
                 value={revokeReason}
                 onChange={(e) => setRevokeReason(e.target.value)}
-                placeholder="e.g. Administrative error, re-issue requested, or credential invalidated"
+                placeholder="e.g. Academic Malpractice, Disciplinary Action, or Fraudulent Enrollment Record"
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:border-red-500 resize-none h-20"
               />
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[
+                  'Academic Malpractice / Plagiarism',
+                  'Fraudulent Eligibility Records',
+                  'Disciplinary Senate Invalidation'
+                ].map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRevokeReason(r)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+                  >
+                    + {r}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-2">

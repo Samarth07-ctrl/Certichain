@@ -14,6 +14,8 @@ export interface Certificate {
   status: 'Verified' | 'Pending' | 'Revoked';
   issuer: string;
   createdAt: string;
+  revocationReason?: string;
+  revocationBlockNumber?: number;
 }
 
 export interface BlockTransaction {
@@ -82,6 +84,7 @@ export interface VerificationResultData {
   blockchainRecord: 'FOUND' | 'NOT_FOUND';
   issuingInstitution: 'VERIFIED' | 'UNVERIFIED';
   isRevoked?: boolean;
+  revocationReason?: string;
   digitalSignature?: string;
   issuerPublicKey?: string;
   merkleProof?: any;

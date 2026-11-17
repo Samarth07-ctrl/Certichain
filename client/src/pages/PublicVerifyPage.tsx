@@ -33,16 +33,31 @@ export const PublicVerifyPage: React.FC = () => {
   const { verifyCertificateByIdOrHash, certificates } = useBlockchain();
   const navigate = useNavigate();
 
-  // Verification method tab: 'upload' | 'id'
-  const [method, setMethod] = useState<'upload' | 'id'>('upload');
+  // Verification method tab: 'upload' | 'id' | 'tamper-lab'
+  const [method, setMethod] = useState<'upload' | 'id' | 'tamper-lab'>('upload');
   const [certificateIdInput, setCertificateIdInput] = useState(urlCertId || queryCert || '');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  // Tamper Lab State
+  const [tamperTargetId, setTamperTargetId] = useState<string>('CERT-2026-001284');
+  const [tamperCandidateName, setTamperCandidateName] = useState<string>('Aarav Sharma');
+  const [tamperGrade, setTamperGrade] = useState<string>('9.99 CGPA (Altered Forged Grade)');
+  const [tamperLiveHash, setTamperLiveHash] = useState<string>('');
 
   // Stepper state
   const [verifying, setVerifying] = useState(false);
   const [verificationStep, setVerificationStep] = useState<number>(0);
   const [result, setResult] = useState<VerificationResultData | null>(null);
   const [showMerkleModal, setShowMerkleModal] = useState(false);
+
+  useEffect(() => {
+    const computeTamperPreview = async () => {
+      const payload = `FORGED_PAYLOAD:${tamperTargetId}:${tamperCandidateName}:${tamperGrade}:999`;
+      const h = await calculateSHA256(payload);
+      setTamperLiveHash(h);
+    };
+    computeTamperPreview();
+  }, [tamperTargetId, tamperCandidateName, tamperGrade]);
 
   useEffect(() => {
     if (urlCertId || queryCert) {
@@ -133,6 +148,29 @@ export const PublicVerifyPage: React.FC = () => {
     setVerifying(false);
   };
 
+  const handleExecuteTamperSimulation = async () => {
+    setVerifying(true);
+    setResult(null);
+
+    setVerificationStep(1);
+    await new Promise(r => setTimeout(r, 350));
+    setVerificationStep(2);
+    await new Promise(r => setTimeout(r, 450));
+    setVerificationStep(3);
+    await new Promise(r => setTimeout(r, 450));
+    setVerificationStep(4);
+    await new Promise(r => setTimeout(r, 350));
+
+    const fakeBuffer = new TextEncoder().encode(
+      `TAMPERED_FORGERY_DATA:${tamperTargetId}:${tamperCandidateName}:${tamperGrade}`
+    ).buffer as ArrayBuffer;
+
+    const verificationData = await verifyCertificateByIdOrHash(tamperTargetId, fakeBuffer);
+    setVerificationStep(5);
+    setResult(verificationData);
+    setVerifying(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#F7F9FC] text-[#111827]">
       {/* Public Top Navbar */}
@@ -204,6 +242,21 @@ export const PublicVerifyPage: React.FC = () => {
               Method 2: Certificate ID
               {method === 'id' && (
                 <span className="absolute bottom-[-17px] left-0 right-0 h-0.5 bg-[#123B5D]" />
+              )}
+            </button>
+            <button
+              onClick={() => { setMethod('tamper-lab'); setResult(null); }}
+              className={`text-xs sm:text-sm font-semibold pb-1 relative transition-colors flex items-center gap-1.5 ${
+                method === 'tamper-lab' ? 'text-rose-600' : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+              <span>Method 3: Live Tamper & Forgery Lab</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">
+                Viva Demo
+              </span>
+              {method === 'tamper-lab' && (
+                <span className="absolute bottom-[-17px] left-0 right-0 h-0.5 bg-rose-600" />
               )}
             </button>
           </div>
@@ -311,6 +364,109 @@ export const PublicVerifyPage: React.FC = () => {
             </form>
           )}
 
+          {/* Method 3: Live Tamper Lab */}
+          {method === 'tamper-lab' && (
+            <div className="space-y-6">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs text-rose-950 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-rose-800">
+                  <ShieldAlert className="w-4 h-4 text-rose-600" />
+                  <span>The Cryptographic Avalanche Effect Demonstration</span>
+                </div>
+                <p className="text-[11px] text-rose-900 leading-relaxed">
+                  In this live sandbox, modify any genuine certificate credential (such as altering the student name or changing the CGPA). Observe how altering even a single bit completely changes the 256-bit SHA-256 digest, making undetected tampering cryptographically impossible.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Select Target Genuine Certificate
+                  </label>
+                  <select
+                    value={tamperTargetId}
+                    onChange={(e) => {
+                      setTamperTargetId(e.target.value);
+                      const target = certificates.find(c => c.certificateId === e.target.value);
+                      if (target) {
+                        setTamperCandidateName(target.studentName);
+                        setTamperGrade('9.99 CGPA (Forged Grade)');
+                      }
+                    }}
+                    className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-3 py-2 text-xs font-mono font-semibold"
+                  >
+                    {certificates.map(c => (
+                      <option key={c.id} value={c.certificateId}>
+                        {c.certificateId} · {c.studentName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Candidate Name (Try editing)
+                  </label>
+                  <input
+                    type="text"
+                    value={tamperCandidateName}
+                    onChange={(e) => setTamperCandidateName(e.target.value)}
+                    className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg px-3 py-2 text-xs focus:border-rose-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Altered / Forged CGPA
+                  </label>
+                  <input
+                    type="text"
+                    value={tamperGrade}
+                    onChange={(e) => setTamperGrade(e.target.value)}
+                    className="w-full bg-[#F8FAFC] border border-rose-300 rounded-lg px-3 py-2 text-xs text-rose-700 font-semibold focus:border-rose-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Side-by-side hash difference */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-1">
+                  <span className="text-[11px] font-bold text-emerald-800 block">
+                    ✓ Genuine Blockchain Registered Digest:
+                  </span>
+                  <div className="break-all text-[11px] text-emerald-900 bg-white p-2 rounded border border-emerald-200">
+                    {certificates.find(c => c.certificateId === tamperTargetId)?.certificateHash || 'Loading...'}
+                  </div>
+                  <span className="text-[10px] text-emerald-700 block">Status: Sealed on Ledger</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-rose-300 bg-rose-50/50 space-y-1">
+                  <span className="text-[11px] font-bold text-rose-800 block">
+                    ✗ Forged / Altered Document Digest (Avalanche Scrambled):
+                  </span>
+                  <div className="break-all text-[11px] text-rose-900 bg-white p-2 rounded border border-rose-200">
+                    {tamperLiveHash || 'Calculating...'}
+                  </div>
+                  <span className="text-[10px] text-rose-700 block">Parity: 0.0% Match (Mismatch Detected)</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-slate-500">
+                  Ready to test? Submit this payload through the verifier:
+                </span>
+                <button
+                  type="button"
+                  onClick={handleExecuteTamperSimulation}
+                  disabled={verifying}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-2"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>{verifying ? 'Simulating Detection...' : 'Submit Forged Credential to Ledger'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Live Progress Stepper during verification */}
           {verifying && (
             <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
@@ -376,7 +532,6 @@ export const PublicVerifyPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-
                   <div className="text-left sm:text-right text-xs">
                     <span className="text-slate-500 block">Verified on</span>
                     <span className="font-mono text-slate-800 font-medium">
@@ -569,12 +724,23 @@ export const PublicVerifyPage: React.FC = () => {
                 </div>
 
                 <div className="p-6 sm:p-8 space-y-6 text-xs">
-                  <div className="p-4 bg-amber-100/60 border border-amber-300 rounded-xl text-amber-950 space-y-1">
-                    <span className="font-bold block text-sm flex items-center gap-1.5">
-                      <AlertTriangle className="w-4 h-4 text-amber-700" />
-                      Notice to Employers & Background Screeners:
-                    </span>
-                    <p className="text-[11px] leading-relaxed">
+                  <div className="p-4 bg-amber-100/60 border border-amber-300 rounded-xl text-amber-950 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm flex items-center gap-1.5 text-amber-950">
+                        <AlertTriangle className="w-4 h-4 text-amber-700" />
+                        Official Revocation Notice:
+                      </span>
+                      <span className="text-[10px] font-mono bg-amber-200/80 px-2 py-0.5 rounded text-amber-900 font-bold">
+                        NON-REVERSIBLE ON-CHAIN
+                      </span>
+                    </div>
+                    <div className="bg-white/80 p-2.5 rounded-lg border border-amber-200">
+                      <span className="text-[11px] font-semibold text-slate-500 block">Audited Reason for Revocation:</span>
+                      <span className="text-xs font-bold text-rose-900">
+                        "{result.revocationReason || 'Disciplinary Academic Action / Record Invalidation'}"
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-900 leading-relaxed">
                       The university registrar has issued an append-only revocation transaction. While the original historical issuance record remains immutable on the chain, this credential is <strong>no longer active or valid</strong>.
                     </p>
                   </div>
@@ -638,16 +804,30 @@ export const PublicVerifyPage: React.FC = () => {
 
             {/* 2. TAMPERED / MISMATCH RESULT */}
             {result.status === 'MISMATCH' && (
-              <div className="bg-white border border-rose-300 rounded-2xl shadow-xs overflow-hidden">
-                <div className="bg-rose-50/80 border-b border-rose-200 p-6 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-xs shrink-0">
-                    <ShieldAlert className="w-7 h-7" />
+              <div className="bg-white border-2 border-rose-500 rounded-2xl shadow-md overflow-hidden">
+                <div className="bg-rose-600 text-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-bold">⚠️ Cryptographic Forgery Detected</h2>
+                        <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-white text-rose-700 uppercase tracking-wider">
+                          Tampered
+                        </span>
+                      </div>
+                      <p className="text-xs text-rose-100 mt-0.5">
+                        Document payload has been altered after institutional anchoring. Cryptographic SHA-256 hash does not match blockchain record.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Certificate Integrity Check Failed</h2>
-                    <p className="text-xs text-rose-800 mt-0.5">
-                      The submitted document does not match the certificate record registered by the issuing institution.
-                    </p>
+
+                  <div className="text-left sm:text-right text-xs font-mono">
+                    <span className="text-rose-200 block">Security Analysis</span>
+                    <span className="font-bold text-white bg-black/30 px-2 py-0.5 rounded">
+                      0% Bit Parity · Mismatch
+                    </span>
                   </div>
                 </div>
 
@@ -655,10 +835,10 @@ export const PublicVerifyPage: React.FC = () => {
                   <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1">
                     <div className="font-semibold flex items-center gap-1.5">
                       <AlertTriangle className="w-4 h-4 text-amber-600" />
-                      Cryptographic Explanation
+                      Cryptographic Explanation (Avalanche Effect)
                     </div>
                     <p className="text-amber-800 text-[11px]">
-                      Even a small modification to the certificate (such as altering a grade, name, date, or pixel) changes its cryptographic SHA-256 hash completely (Avalanche effect).
+                      Even a small modification to the certificate (such as altering a grade, name, date, or single pixel) changes its cryptographic SHA-256 hash completely (Avalanche effect).
                     </p>
                   </div>
 
@@ -666,7 +846,7 @@ export const PublicVerifyPage: React.FC = () => {
                   <div className="space-y-3 font-mono">
                     <div className="p-3 rounded-lg border border-rose-200 bg-rose-50/40">
                       <span className="text-rose-700 font-bold block text-[11px] mb-1">
-                        Submitted Document Hash:
+                        Submitted Document Hash (Altered / Forged):
                       </span>
                       <div className="break-all text-rose-900 bg-white p-2 rounded border border-rose-200">
                         {result.submittedHash}
@@ -675,7 +855,7 @@ export const PublicVerifyPage: React.FC = () => {
 
                     <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
                       <span className="text-slate-600 font-bold block text-[11px] mb-1">
-                        Registered Blockchain Hash:
+                        Registered Blockchain Hash (Immutable Reference):
                       </span>
                       <div className="break-all text-slate-900 bg-white p-2 rounded border border-slate-200">
                         {result.registeredHash}
@@ -685,7 +865,7 @@ export const PublicVerifyPage: React.FC = () => {
 
                   <div className="flex flex-wrap items-center justify-between pt-4 border-t border-slate-100 gap-3">
                     <Link
-                      to={`/blockchain/${result.blockNumber}`}
+                      to={`/institution/blockchain/${result.blockNumber}`}
                       className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5"
                     >
                       <span>View Blockchain Record</span>

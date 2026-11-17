@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Certificate, Block, AuditLog, Institution, VerificationResultData } from '../types';
+import { Certificate, Block, BlockTransaction, AuditLog, Institution, VerificationResultData } from '../types';
 import {
   INITIAL_INSTITUTION,
   INITIAL_CERTIFICATES,
@@ -27,6 +27,7 @@ interface BlockchainContextType {
   verificationCount: number;
   isChainValid: () => Promise<{ valid: boolean; failedIndex?: number; reason?: string }>;
   registerCertificate: (certData: Omit<Certificate, 'id' | 'blockNumber' | 'transactionId' | 'status' | 'createdAt'>) => Promise<Certificate>;
+  registerCertificateBatch: (certsData: Array<Omit<Certificate, 'id' | 'blockNumber' | 'transactionId' | 'status' | 'createdAt'>>) => Promise<{ block: Block; certificates: Certificate[]; merkleRoot: string }>;
   revokeCertificate: (certId: string, reason?: string) => Promise<boolean>;
   verifyCertificateByIdOrHash: (identifierOrId: string, fileBytes?: ArrayBuffer) => Promise<VerificationResultData>;
   tamperBlockDataForDemo: (blockIndex: number) => void;
@@ -225,6 +226,104 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newCert;
   };
 
+  const registerCertificateBatch = async (
+    certsData: Array<Omit<Certificate, 'id' | 'blockNumber' | 'transactionId' | 'status' | 'createdAt'>>
+  ): Promise<{ block: Block; certificates: Certificate[]; merkleRoot: string }> => {
+    if (certsData.length === 0) {
+      throw new Error('Batch cannot be empty');
+    }
+
+    const timestamp = new Date().toISOString();
+    const newBlockIndex = blocks.length;
+    const latestBlock = blocks[blocks.length - 1];
+
+    const batchTransactions: BlockTransaction[] = [];
+    const newCertificates: Certificate[] = [];
+    const leavesHashes: string[] = [];
+
+    certsData.forEach((certData, idx) => {
+      const txId = `TX-BATCH-${certData.certificateHash.slice(0, 8).toUpperCase()}-${(idx + 1).toString().padStart(3, '0')}`;
+      
+      const newTx: BlockTransaction = {
+        transactionId: txId,
+        certificateId: certData.certificateId,
+        type: 'Certificate Registration',
+        timestamp,
+        issuer: institution.name,
+        certificateHash: certData.certificateHash,
+        blockNumber: newBlockIndex,
+        status: 'Confirmed',
+        studentIdentifier: `${certData.studentName} (${certData.studentId})`
+      };
+
+      const newCert: Certificate = {
+        ...certData,
+        id: `c-batch-${Date.now()}-${idx}`,
+        blockNumber: newBlockIndex,
+        transactionId: txId,
+        status: 'Verified',
+        createdAt: timestamp
+      };
+
+      batchTransactions.push(newTx);
+      newCertificates.push(newCert);
+      leavesHashes.push(certData.certificateHash);
+    });
+
+    const merkleTree = new ClientMerkleTree(leavesHashes);
+    const computedMerkleRoot = await merkleTree.buildTree();
+
+    const newBlockHash = await calculateBlockHash(
+      newBlockIndex,
+      timestamp,
+      batchTransactions,
+      latestBlock.hash
+    );
+
+    const newBlock: Block = {
+      index: newBlockIndex,
+      timestamp,
+      transactions: batchTransactions,
+      previousHash: latestBlock.hash,
+      hash: newBlockHash,
+      merkleRoot: computedMerkleRoot,
+      consensusApprovals: [
+        {
+          validatorId: 'node-val-01',
+          name: 'Dean of Academic Affairs (VIT Pune)',
+          signature: `poa_sig_batch_0x8f2a_${newBlockHash.slice(0, 16)}`
+        },
+        {
+          validatorId: 'node-val-02',
+          name: 'Controller of Examinations (VIT Pune)',
+          signature: `poa_sig_batch_0x3b9c_${newBlockHash.slice(0, 16)}`
+        }
+      ],
+      validator: 'VIT Registrar Node (Node-VIT-01)',
+      nonce: Math.floor(Math.random() * 9000) + 1000
+    };
+
+    setBlocks(prev => [...prev, newBlock]);
+    setCertificates(prev => [...newCertificates, ...prev]);
+
+    const batchLog: AuditLog = {
+      id: `log-${Date.now()}-batch`,
+      timestamp,
+      user: user?.email || 'admin@certichain.demo',
+      action: 'Certificate Issued',
+      resource: `Bulk Batch Minted: ${newCertificates.length} credentials anchored in Block #${newBlockIndex}`,
+      ipSession: '192.168.1.104 (Campus Node)',
+      status: 'Success'
+    };
+    setAuditLogs(prev => [batchLog, ...prev]);
+
+    return {
+      block: newBlock,
+      certificates: newCertificates,
+      merkleRoot: computedMerkleRoot
+    };
+  };
+
   const revokeCertificate = async (certId: string, reason = 'Administrative revocation'): Promise<boolean> => {
     const cert = certificates.find(c => c.certificateId === certId);
     if (!cert) return false;
@@ -280,7 +379,12 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     setBlocks(prev => [...prev, newBlock]);
-    setCertificates(prev => prev.map(c => c.certificateId === certId ? { ...c, status: 'Revoked' } : c));
+    setCertificates(prev => prev.map(c => c.certificateId === certId ? {
+      ...c,
+      status: 'Revoked',
+      revocationReason: reason,
+      revocationBlockNumber: newBlockIndex
+    } : c));
 
     setAuditLogs(prev => [
       {
@@ -405,6 +509,7 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       blockchainRecord: 'FOUND',
       issuingInstitution: 'VERIFIED',
       isRevoked,
+      revocationReason: matchedCert.revocationReason || 'Disciplinary Academic Revocation',
       digitalSignature: `0xecdsa_${matchedCert.certificateHash.slice(0, 32)}_sig`,
       issuerPublicKey: '0x8F2A91D6E7216A8C9c1E86E20738e4A81De95B24'
     };
@@ -468,6 +573,7 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         verificationCount,
         isChainValid,
         registerCertificate,
+        registerCertificateBatch,
         revokeCertificate,
         verifyCertificateByIdOrHash,
         tamperBlockDataForDemo,

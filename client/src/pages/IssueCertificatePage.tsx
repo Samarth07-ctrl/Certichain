@@ -12,18 +12,33 @@ import {
   Download,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  FileSpreadsheet,
+  Layers,
+  Sparkles,
+  Table
 } from 'lucide-react';
 import { useBlockchain } from '../context/BlockchainContext';
 import { PageHeader, HashDisplay } from '../components/ui/CommonUI';
 import { calculateSHA256 } from '../utils/crypto';
+import { ClientMerkleTree } from '../utils/merkle';
 import { Certificate } from '../types';
 
 export const IssueCertificatePage: React.FC = () => {
-  const { registerCertificate, institution, blocks } = useBlockchain();
+  const { registerCertificate, registerCertificateBatch, institution, blocks } = useBlockchain();
   const navigate = useNavigate();
 
-  // Multi-step state: 1 to 5
+  // Mode: 'single' | 'batch'
+  const [mode, setMode] = useState<'single' | 'batch'>('single');
+
+  // Batch issuance state
+  const [batchCandidates, setBatchCandidates] = useState<any[]>([]);
+  const [batchMerkleRoot, setBatchMerkleRoot] = useState<string>('');
+  const [isBuildingTree, setIsBuildingTree] = useState<boolean>(false);
+  const [isMintingBatch, setIsMintingBatch] = useState<boolean>(false);
+  const [batchResult, setBatchResult] = useState<{ blockNumber: number; count: number; merkleRoot: string; certs: Certificate[] } | null>(null);
+
+  // Multi-step state: 1 to 5 (for Single Mode)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Form data
@@ -123,6 +138,161 @@ export const IssueCertificatePage: React.FC = () => {
     }
   };
 
+  const loadSampleBatch = () => {
+    const samples = [
+      {
+        studentName: 'Rohan Mehra',
+        studentId: 'VIT-2022-CS-102',
+        program: 'B.Tech Computer Engineering',
+        department: 'Department of Computer Engineering',
+        grade: '9.62 CGPA (Distinction)',
+        issueDate: new Date().toISOString().slice(0, 10),
+        certificateId: `CERT-2026-00${String(blocks.length + 1285).padStart(4, '0')}`
+      },
+      {
+        studentName: 'Priya Deshmukh',
+        studentId: 'VIT-2022-AI-045',
+        program: 'B.Tech Artificial Intelligence',
+        department: 'Department of AI & Data Science',
+        grade: '9.38 CGPA (Distinction)',
+        issueDate: new Date().toISOString().slice(0, 10),
+        certificateId: `CERT-2026-00${String(blocks.length + 1286).padStart(4, '0')}`
+      },
+      {
+        studentName: 'Kabir Singhania',
+        studentId: 'VIT-2022-IT-089',
+        program: 'B.Tech Information Technology',
+        department: 'Department of Information Technology',
+        grade: '8.91 CGPA (First Class)',
+        issueDate: new Date().toISOString().slice(0, 10),
+        certificateId: `CERT-2026-00${String(blocks.length + 1287).padStart(4, '0')}`
+      },
+      {
+        studentName: 'Sneha Kulkarni',
+        studentId: 'VIT-2022-EC-054',
+        program: 'B.Tech Electronics Engineering',
+        department: 'Department of Electronics',
+        grade: '9.15 CGPA (Distinction)',
+        issueDate: new Date().toISOString().slice(0, 10),
+        certificateId: `CERT-2026-00${String(blocks.length + 1288).padStart(4, '0')}`
+      },
+      {
+        studentName: 'Aditya Patil',
+        studentId: 'VIT-2022-ME-021',
+        program: 'B.Tech Mechanical Engineering',
+        department: 'Department of Mechanical Engineering',
+        grade: '8.76 CGPA (First Class)',
+        issueDate: new Date().toISOString().slice(0, 10),
+        certificateId: `CERT-2026-00${String(blocks.length + 1289).padStart(4, '0')}`
+      }
+    ];
+    setBatchCandidates(samples);
+    setBatchMerkleRoot('');
+    setBatchResult(null);
+  };
+
+  const handleComputeBatchMerkleTree = async () => {
+    if (batchCandidates.length === 0) return;
+    setIsBuildingTree(true);
+
+    const updatedWithHashes = await Promise.all(
+      batchCandidates.map(async (c) => {
+        const payload = JSON.stringify({
+          studentName: c.studentName,
+          studentId: c.studentId,
+          institution: institution.name,
+          program: c.program,
+          grade: c.grade,
+          issueDate: c.issueDate
+        });
+        const hash = await calculateSHA256(payload);
+        return { ...c, hash };
+      })
+    );
+
+    setBatchCandidates(updatedWithHashes);
+
+    const leaves = updatedWithHashes.map(c => c.hash);
+    const tree = new ClientMerkleTree(leaves);
+    const root = await tree.buildTree();
+    setBatchMerkleRoot(root);
+    setIsBuildingTree(false);
+  };
+
+  const handleMintBatchBlock = async () => {
+    if (batchCandidates.length === 0 || !batchMerkleRoot) return;
+    setIsMintingBatch(true);
+    try {
+      const certsPayload = batchCandidates.map(c => ({
+        certificateId: c.certificateId,
+        studentName: c.studentName,
+        studentId: c.studentId,
+        institution: institution.name,
+        program: c.program,
+        department: c.department,
+        grade: c.grade,
+        issueDate: c.issueDate,
+        certificateHash: c.hash || '',
+        issuer: institution.name
+      }));
+
+      const res = await registerCertificateBatch(certsPayload);
+      setBatchResult({
+        blockNumber: res.block.index,
+        count: res.certificates.length,
+        merkleRoot: res.merkleRoot,
+        certs: res.certificates
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsMintingBatch(false);
+    }
+  };
+
+  const downloadCSVTemplate = () => {
+    const csv = `Student Name,Roll No,Program,Department,Grade,Issue Date,Certificate ID
+Rohan Mehra,VIT-2022-CS-102,B.Tech Computer Engineering,Department of Computer Engineering,9.62 CGPA,2026-06-15,CERT-2026-001290
+Priya Deshmukh,VIT-2022-AI-045,B.Tech Artificial Intelligence,Department of AI & Data Science,9.38 CGPA,2026-06-15,CERT-2026-001291
+Kabir Singhania,VIT-2022-IT-089,B.Tech Information Technology,Department of Information Technology,8.91 CGPA,2026-06-15,CERT-2026-001292`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'certichain_batch_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length <= 1) return;
+
+    const parsed: any[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+      if (parts.length >= 5) {
+        parsed.push({
+          studentName: parts[0] || `Student ${i}`,
+          studentId: parts[1] || `VIT-2022-EXT-${i}`,
+          program: parts[2] || 'B.Tech Engineering',
+          department: parts[3] || 'Department of Technology',
+          grade: parts[4] || '9.0 CGPA',
+          issueDate: parts[5] || new Date().toISOString().slice(0, 10),
+          certificateId: parts[6] || `CERT-2026-00${String(blocks.length + 1285 + i).padStart(4, '0')}`
+        });
+      }
+    }
+    if (parsed.length > 0) {
+      setBatchCandidates(parsed);
+      setBatchMerkleRoot('');
+      setBatchResult(null);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <PageHeader
@@ -130,8 +300,41 @@ export const IssueCertificatePage: React.FC = () => {
         subtitle="Cryptographically seal and register an academic degree onto the ledger"
       />
 
-      {/* 5-Step Process Bar */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-xs">
+      {/* Mode Switcher Tabs */}
+      <div className="flex items-center gap-2 border-b border-[#E5E7EB] pb-3">
+        <button
+          type="button"
+          onClick={() => setMode('single')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            mode === 'single'
+              ? 'bg-[#123B5D] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <FilePlus2 className="w-4 h-4" />
+          <span>Single Credential Wizard</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('batch')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            mode === 'batch'
+              ? 'bg-[#123B5D] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>Batch Issuance via CSV (Merkle Bulk Minting)</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-[#123B5D]">
+            Real-World
+          </span>
+        </button>
+      </div>
+
+      {mode === 'single' && (
+        <>
+          {/* 5-Step Process Bar */}
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-xs">
         <div className="flex items-center justify-between">
           {[
             { num: 1, title: 'Information' },
@@ -529,6 +732,278 @@ export const IssueCertificatePage: React.FC = () => {
               Issue Another
             </button>
           </div>
+        </div>
+      )}
+      </>
+      )}
+
+      {/* Batch Mode UI */}
+      {mode === 'batch' && (
+        <div className="space-y-6">
+          {/* Real-World Context Callout */}
+          <div className="bg-gradient-to-r from-slate-900 to-[#123B5D] text-white rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-blue-200 border border-white/10">
+                <Layers className="w-3.5 h-3.5" />
+                <span>Enterprise Merkle Aggregation</span>
+              </div>
+              <h2 className="text-base font-bold">Why Batch Merkle Minting?</h2>
+              <p className="text-xs text-blue-100/80 max-w-xl">
+                On graduation day, colleges issue 1,000+ degrees. Instead of creating 1,000 separate blocks or transactions, all credential hashes form leaves of a <strong>Binary Merkle Tree</strong>. A single 32-byte <strong>Merkle Root</strong> anchors the entire batch into one immutable block.
+              </p>
+            </div>
+            <div className="flex flex-wrap md:flex-col gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={loadSampleBatch}
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Load Sample 5-Student Batch</span>
+              </button>
+              <button
+                type="button"
+                onClick={downloadCSVTemplate}
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 border border-white/10"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download CSV Template</span>
+              </button>
+            </div>
+          </div>
+
+          {/* If Batch Result exists, show confirmation screen */}
+          {batchResult ? (
+            <div className="bg-white border border-emerald-200 rounded-2xl p-8 shadow-xs text-center space-y-6">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
+                <CheckCircle2 className="w-10 h-10" />
+              </div>
+
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Batch Successfully Anchored in Block #{batchResult.blockNumber}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {batchResult.count} academic credentials sealed into a single block with Proof of Authority consensus.
+                </p>
+              </div>
+
+              {/* Merkle Root banner */}
+              <div className="bg-slate-900 text-slate-100 p-5 rounded-xl font-mono text-xs space-y-2 max-w-xl mx-auto text-left">
+                <div className="text-[11px] text-blue-300 font-semibold flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Anchored Binary Merkle Root (32 bytes):</span>
+                </div>
+                <div className="break-all text-emerald-400 bg-black/40 p-2.5 rounded border border-slate-800 select-all">
+                  {batchResult.merkleRoot}
+                </div>
+                <div className="text-[10px] text-slate-400 flex justify-between pt-1">
+                  <span>Consensus: PoA 2/3 Quorum Signed</span>
+                  <span>Batch Height: Block #{batchResult.blockNumber}</span>
+                </div>
+              </div>
+
+              {/* Issued Credentials list */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 max-w-xl mx-auto text-left text-xs">
+                <div className="font-bold text-slate-800 mb-2 flex justify-between items-center">
+                  <span>Issued Batch Candidates ({batchResult.certs.length})</span>
+                  <span className="text-[11px] text-slate-500 font-normal">All sealed</span>
+                </div>
+                <div className="divide-y divide-slate-200 max-h-48 overflow-y-auto">
+                  {batchResult.certs.map((c) => (
+                    <div key={c.id} className="py-2 flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-slate-900">{c.studentName}</div>
+                        <div className="text-[11px] text-slate-500 font-mono">{c.certificateId} · {c.program}</div>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/verify/${c.certificateId}`)}
+                        className="px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 rounded transition-colors inline-flex items-center gap-1"
+                      >
+                        <span>Verify</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => navigate(`/institution/blockchain/${batchResult.blockNumber}`)}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-[#123B5D] hover:bg-[#0E2E49] rounded-lg inline-flex items-center gap-1.5"
+                >
+                  <Blocks className="w-3.5 h-3.5 text-blue-300" />
+                  <span>Inspect Batch Block #{batchResult.blockNumber}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setBatchResult(null);
+                    setBatchCandidates([]);
+                    setBatchMerkleRoot('');
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg"
+                >
+                  Mint Another Batch
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-xs space-y-6">
+              {/* Batch Actions & CSV dropzone */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Graduation Batch Registry ({batchCandidates.length} students loaded)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Upload a CSV file or load the 5-student sample to compute the Merkle Tree.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    id="batch-csv-upload"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleCSVUpload}
+                  />
+                  <label
+                    htmlFor="batch-csv-upload"
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Upload CSV File</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={loadSampleBatch}
+                    className="px-3.5 py-2 text-xs font-semibold text-white bg-[#123B5D] hover:bg-[#0E2E49] rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Load 5-Student Sample</span>
+                  </button>
+                </div>
+              </div>
+
+              {batchCandidates.length === 0 ? (
+                <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl space-y-3">
+                  <FileSpreadsheet className="w-10 h-10 text-slate-300 mx-auto" />
+                  <div className="text-xs text-slate-600">
+                    <p className="font-semibold text-slate-800">No candidates loaded yet</p>
+                    <p className="text-slate-500 mt-0.5">Click <strong>"Load 5-Student Sample"</strong> to test instantly or upload your batch CSV.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={loadSampleBatch}
+                    className="mt-2 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Load 5 Sample Candidates</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Candidates Table */}
+                  <div className="overflow-x-auto border border-[#E5E7EB] rounded-xl">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#F8FAFC] border-b border-[#E5E7EB] text-[#64748B] font-semibold">
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Candidate Name</th>
+                          <th className="py-2.5 px-3">Roll No</th>
+                          <th className="py-2.5 px-3">Program</th>
+                          <th className="py-2.5 px-3">Grade</th>
+                          <th className="py-2.5 px-3">Certificate ID</th>
+                          <th className="py-2.5 px-3">SHA-256 Digest</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E5E7EB]">
+                        {batchCandidates.map((c, idx) => (
+                          <tr key={c.studentId || idx} className="hover:bg-slate-50/80">
+                            <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-900">{c.studentName}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-600">{c.studentId}</td>
+                            <td className="py-2.5 px-3 text-slate-700">{c.program}</td>
+                            <td className="py-2.5 px-3 text-slate-700">{c.grade}</td>
+                            <td className="py-2.5 px-3 font-mono font-semibold text-[#123B5D]">{c.certificateId}</td>
+                            <td className="py-2.5 px-3">
+                              {c.hash ? (
+                                <HashDisplay hash={c.hash} />
+                              ) : (
+                                <span className="text-slate-400 italic">Pending hash...</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Merkle Tree Computation Card */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-blue-600" />
+                          <h4 className="font-bold text-xs text-slate-900">
+                            Binary Merkle Tree Generation
+                          </h4>
+                          {batchMerkleRoot && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              Computed
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Aggregates {batchCandidates.length} leaf hashes into a single root using pairwise SHA-256 with odd leaf duplication.
+                        </p>
+                      </div>
+
+                      {!batchMerkleRoot ? (
+                        <button
+                          type="button"
+                          onClick={handleComputeBatchMerkleTree}
+                          disabled={isBuildingTree}
+                          className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg inline-flex items-center gap-1.5 shadow-xs shrink-0"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                          <span>{isBuildingTree ? 'Calculating Tree...' : 'Compute Merkle Tree & Root'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleMintBatchBlock}
+                          disabled={isMintingBatch}
+                          className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl inline-flex items-center gap-2 shadow-xs shrink-0"
+                        >
+                          <Blocks className="w-4 h-4" />
+                          <span>{isMintingBatch ? 'Mining Single Batch Block...' : `Mint Single Block #${blocks.length}`}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {batchMerkleRoot && (
+                      <div className="bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs space-y-2">
+                        <div className="text-[11px] text-slate-400 flex justify-between">
+                          <span>Calculated Merkle Root:</span>
+                          <span className="text-emerald-400">Leaves: {batchCandidates.length} · Tree Height: 3</span>
+                        </div>
+                        <div className="break-all text-emerald-400 bg-black/40 p-2.5 rounded border border-slate-800 select-all">
+                          {batchMerkleRoot}
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1">
+                          <span>Target: Single Block #{blocks.length} (Previous: {blocks[blocks.length - 1].hash.slice(0, 16)}...)</span>
+                          <span className="text-blue-300">Ready to commit</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
