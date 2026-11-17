@@ -613,7 +613,7 @@ export const PublicVerifyPage: React.FC = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-2 border-t border-slate-200">
                       <span className="text-slate-500">Confirmed in Block:</span>
                       <Link
-                        to={`/institution/blockchain/${result.blockNumber}`}
+                        to={`/blockchain/${result.blockNumber}`}
                         className="text-[#2563EB] hover:underline font-semibold inline-flex items-center gap-1"
                       >
                         <span>Block #{result.blockNumber}</span>
@@ -865,7 +865,7 @@ export const PublicVerifyPage: React.FC = () => {
 
                   <div className="flex flex-wrap items-center justify-between pt-4 border-t border-slate-100 gap-3">
                     <Link
-                      to={`/institution/blockchain/${result.blockNumber}`}
+                      to={`/blockchain/${result.blockNumber}`}
                       className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 inline-flex items-center gap-1.5"
                     >
                       <span>View Blockchain Record</span>

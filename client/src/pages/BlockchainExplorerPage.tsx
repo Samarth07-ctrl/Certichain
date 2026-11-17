@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Blocks,
   ShieldCheck,
@@ -22,8 +22,19 @@ import { Block } from '../types';
 export const BlockchainExplorerPage: React.FC = () => {
   const { blocks, isChainValid, tamperBlockDataForDemo, restoreBlockData } = useBlockchain();
   const navigate = useNavigate();
+  const { blockId } = useParams();
 
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
+
+  useEffect(() => {
+    if (blockId) {
+      const idx = parseInt(blockId, 10);
+      const matched = blocks.find(b => b.index === idx);
+      if (matched) {
+        setSelectedBlock(matched);
+      }
+    }
+  }, [blockId, blocks]);
   const [chainValidationResult, setChainValidationResult] = useState<{
     valid: boolean;
     reason?: string;
@@ -145,9 +156,11 @@ export const BlockchainExplorerPage: React.FC = () => {
             <span>Latest Block</span>
             <Blocks className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-bold text-[#111827] mt-1">#{blocks[blocks.length - 1].index}</div>
+          <div className="text-2xl font-bold text-[#111827] mt-1">
+            #{blocks.length > 0 ? blocks[blocks.length - 1].index : 0}
+          </div>
           <div className="text-[11px] text-[#64748B] mt-1 font-mono truncate">
-            {blocks[blocks.length - 1].hash.slice(0, 16)}...
+            {blocks.length > 0 ? `${blocks[blocks.length - 1].hash.slice(0, 16)}...` : 'Genesis'}
           </div>
         </div>
 

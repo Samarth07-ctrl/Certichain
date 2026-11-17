@@ -8,6 +8,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { PublicVerifyPage } from './pages/PublicVerifyPage';
+import { PublicBlockchainPage } from './pages/PublicBlockchainPage';
 
 // Institution Pages
 import { DashboardPage } from './pages/DashboardPage';
@@ -24,6 +25,8 @@ export function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/verify" element={<PublicVerifyPage />} />
           <Route path="/verify/:id" element={<PublicVerifyPage />} />
+          <Route path="/blockchain" element={<PublicBlockchainPage />} />
+          <Route path="/blockchain/:blockId" element={<PublicBlockchainPage />} />
           
           {/* Single Login (Exclusively for University / Institution) */}
           <Route path="/login" element={<LoginPage />} />
@@ -46,7 +49,6 @@ export function App() {
             <Route path="/dashboard" element={<Navigate to="/institution/dashboard" replace />} />
             <Route path="/certificates" element={<Navigate to="/institution/certificates" replace />} />
             <Route path="/certificates/issue" element={<Navigate to="/institution/issue" replace />} />
-            <Route path="/blockchain" element={<Navigate to="/institution/blockchain" replace />} />
             <Route path="/admin/*" element={<Navigate to="/institution/dashboard" replace />} />
           </Route>
 

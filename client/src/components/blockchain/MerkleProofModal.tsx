@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -29,32 +29,40 @@ export const MerkleProofModal: React.FC<MerkleProofModalProps> = ({
   allBlockHashes,
   certificateId
 }) => {
-  const [activeStep, setActiveStep] = useState<number>(0);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [computedProof, setComputedProof] = useState<MerkleProof | null>(null);
+  const [computedRoot, setComputedRoot] = useState<string>(leafHash);
   const [verificationResult, setVerificationResult] = useState<{
     valid: boolean;
     calculatedRoot: string;
     steps: { combined: string; result: string }[];
   } | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+    const calculateProofAsync = async () => {
+      const leaves = allBlockHashes.length > 0 ? allBlockHashes : [leafHash];
+      const tree = new ClientMerkleTree(leaves);
+      const root = await tree.buildTree();
+      if (isMounted) {
+        setComputedRoot(root);
+        const p = tree.getProof(leafHash);
+        setComputedProof(p);
+      }
+    };
+    if (isOpen) {
+      calculateProofAsync();
+    }
+    return () => { isMounted = false; };
+  }, [isOpen, leafHash, allBlockHashes]);
+
   if (!isOpen) return null;
 
-  // Build tree and generate proof
-  const tree = new ClientMerkleTree(allBlockHashes.length > 0 ? allBlockHashes : [leafHash]);
-  // Synchronous level setup for display
-  const leaves = allBlockHashes.length > 0 ? allBlockHashes : [leafHash];
-  const proof = tree.getProof(leafHash) || {
-    leaf: leafHash,
-    root: leafHash,
-    proof: [],
-    treeHeight: 1,
-    totalLeaves: 1
-  };
+  const proofSteps = computedProof?.proof || [];
 
   const runProofVerification = async () => {
     setIsVerifying(true);
-    await tree.buildTree();
-    const result = await ClientMerkleTree.verifyProof(leafHash, proof.proof, tree.root || leafHash);
+    const result = await ClientMerkleTree.verifyProof(leafHash, proofSteps, computedRoot);
     setVerificationResult(result);
     setIsVerifying(false);
   };
@@ -113,8 +121,8 @@ export const MerkleProofModal: React.FC<MerkleProofModalProps> = ({
             </div>
           </div>
 
-          {proof.proof.length > 0 ? (
-            proof.proof.map((step, idx) => (
+          {proofSteps.length > 0 ? (
+            proofSteps.map((step, idx) => (
               <div key={idx} className="space-y-3">
                 <div className="flex justify-center text-slate-400">
                   <ArrowDown className="w-4 h-4 animate-bounce" />
@@ -147,7 +155,7 @@ export const MerkleProofModal: React.FC<MerkleProofModalProps> = ({
               <span className="text-emerald-700 font-semibold">Ledger Anchor</span>
             </div>
             <div className="font-mono text-[11px] text-emerald-950 font-bold break-all select-all">
-              {tree.root || leafHash}
+              {computedRoot || leafHash}
             </div>
           </div>
         </div>

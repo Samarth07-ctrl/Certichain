@@ -626,7 +626,7 @@ Kabir Singhania,VIT-2022-IT-089,B.Tech Information Technology,Department of Info
             </div>
             <div className="p-3 flex justify-between">
               <span className="text-slate-500">Previous Block Hash</span>
-              <HashDisplay hash={blocks[blocks.length - 1].hash} />
+              <HashDisplay hash={blocks.length > 0 ? blocks[blocks.length - 1].hash : '0000000000000000000000000000000000000000000000000000000000000000'} />
             </div>
             <div className="p-3 flex justify-between bg-slate-50/50">
               <span className="text-slate-500">Certificate Hash</span>
@@ -994,7 +994,7 @@ Kabir Singhania,VIT-2022-IT-089,B.Tech Information Technology,Department of Info
                           {batchMerkleRoot}
                         </div>
                         <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1">
-                          <span>Target: Single Block #{blocks.length} (Previous: {blocks[blocks.length - 1].hash.slice(0, 16)}...)</span>
+                          <span>Target: Single Block #{blocks.length} (Previous: {blocks.length > 0 ? blocks[blocks.length - 1].hash.slice(0, 16) : 'Genesis'}...)</span>
                           <span className="text-blue-300">Ready to commit</span>
                         </div>
                       </div>
